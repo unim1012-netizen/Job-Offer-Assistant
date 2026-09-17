@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>求职助手 · AI 岗位匹配分析</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230d9488'/%3E%3Cpath d='M20 26h24v18a4 4 0 0 1-4 4H24a4 4 0 0 1-4-4V26z' fill='%23fff'/%3E%3Cpath d='M20 26h24l-4-8H24l-4 8z' fill='%23fbbf24'/%3E%3Cpath d='M27 30h10v2H27zm0 6h10v2H27z' fill='%230d9488'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://miaoda.feishu.cn">
+<link href="https://miaoda.feishu.cn/fonts/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f6f4ef; --surface:#ffffff; --ink:#1c1917; --muted:#78716c;
+    --line:#e7e2d9; --accent:#0d9488; --accent-dark:#0f766e; --accent-soft:#e6f4f2;
+    --warn:#b45309; --warn-soft:#fdf3e3; --danger:#b91c1c; --danger-soft:#fdecec;
+    --radius:14px; --shadow:0 1px 2px rgba(28,25,23,.05), 0 8px 24px -12px rgba(28,25,23,.12);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{scroll-behavior:smooth;}
+  body{
+    font-family:"Noto Sans SC", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+    background:var(--bg); color:var(--ink); line-height:1.65; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:760px; margin:0 auto; padding:28px 20px 64px;}
+
+  /* ===== 头部 ===== */
+  header{display:flex; align-items:center; gap:14px; padding:8px 0 6px;}
+  .logo{width:46px; height:46px; flex:none;}
+  .brand h1{font-size:22px; font-weight:900; letter-spacing:.5px;}
+  .brand p{font-size:13px; color:var(--muted); margin-top:2px;}
+  .intro{margin:22px 0 26px; padding:16px 18px; background:var(--accent-soft); border:1px solid #cfe9e6; border-radius:var(--radius); font-size:14px; color:#134e4a;}
+  .intro b{color:var(--accent-dark);}
+
+  /* ===== 卡片 ===== */
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:22px 24px; margin-bottom:18px;}
+  .card h2{font-size:16px; font-weight:700; display:flex; align-items:center; gap:8px; margin-bottom:4px;}
+  .card h2 .step{display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:50%; background:var(--accent); color:#fff; font-size:12px; font-weight:700; flex:none;}
+  .card .hint{font-size:12.5px; color:var(--muted); margin:0 0 16px 30px;}
+
+  /* ===== 表单 ===== */
+  .intent-row{border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin-bottom:12px; background:#fcfbf8;}
+  .intent-row .row-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;}
+  .rank-tag{font-size:12px; font-weight:700; color:var(--accent-dark); background:var(--accent-soft); border:1px solid #cfe9e6; border-radius:999px; padding:2px 10px;}
+  .rank-tag.optional{color:var(--muted); background:#f1efe9; border-color:var(--line);}
+  .intent-fields{display:grid; grid-template-columns:200px 1fr; gap:12px;}
+  .field label{display:block; font-size:12.5px; color:var(--muted); margin-bottom:5px; font-weight:500;}
+  select, input[type=text], textarea{
+    width:100%; font:inherit; font-size:14px; color:var(--ink);
+    border:1px solid #d8d2c6; border-radius:9px; padding:9px 12px; background:#fff;
+    transition:border-color .15s, box-shadow .15s;
+  }
+  select:focus, input[type=text]:focus, textarea:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(13,148,136,.14);}
+  textarea{min-height:120px; resize:vertical; line-height:1.7;}
+  .field-err{font-size:12px; color:var(--danger); margin-top:4px; display:none;}
+  .field.invalid select, .field.invalid input{border-color:var(--danger);}
+
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    font:inherit; font-size:15px; font-weight:700; color:#fff; background:var(--accent);
+    border:none; border-radius:10px; padding:12px 22px; cursor:pointer;
+    transition:background .15s, transform .05s;
+  }
+  .btn:hover{background:var(--accent-dark);}
+  .btn:active{transform:translateY(1px);}
+  .btn:disabled{background:#9cc9c4; cursor:not-allowed;}
+  .btn-ghost{background:#fff; color:var(--ink); border:1px solid var(--line);}
+  .btn-ghost:hover{background:#f6f4ef;}
+  .submit-row{margin-top:6px; display:flex; align-items:center; gap:14px;}
+  .submit-row .note{font-size:12.5px; color:var(--muted);}
+
+  .spinner{width:16px; height:16px; border:2px solid rgba(255,255,255,.4); border-top-color:#fff; border-radius:50%; animation:spin .8s linear infinite; display:none;}
+  .btn.loading .spinner{display:inline-block;}
+  .btn.loading .btn-text{opacity:.9;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  /* ===== 接口设置 ===== */
+  details.settings{border:1px dashed #d0c9bb; border-radius:var(--radius); background:#fbfaf7;}
+  details.settings > summary{list-style:none; cursor:pointer; padding:14px 18px; font-size:13.5px; font-weight:600; color:var(--muted); display:flex; align-items:center; gap:8px; user-select:none;}
+  details.settings > summary::-webkit-details-marker{display:none;}
+  details.settings > summary:hover{color:var(--ink);}
+  details.settings[open] > summary{border-bottom:1px solid var(--line);}
+  .settings-body{padding:16px 18px 18px;}
+  .settings-grid{display:grid; gap:14px; margin-bottom:14px;}
+  .settings-note{font-size:12.5px; color:var(--muted); background:#f1efe9; border-radius:9px; padding:10px 12px; line-height:1.7;}
+  .settings-note code{background:#fff; border:1px solid var(--line); border-radius:4px; padding:0 5px; font-size:11.5px; color:#0f766e;}
+  .config-status{font-size:13px; margin-top:12px; padding:9px 12px; border-radius:9px; display:none;}
+  .config-status.ok{display:block; background:var(--accent-soft); color:#134e4a; border:1px solid #cfe9e6;}
+  .config-status.err{display:block; background:var(--danger-soft); color:var(--danger); border:1px solid #f3caca;}
+
+  /* ===== 状态与结果 ===== */
+  .result{display:none;}
+  .result.show{display:block;}
+  .status-card .steps{margin-top:6px;}
+  .step{display:flex; align-items:center; gap:10px; padding:7px 0; font-size:13.5px; color:var(--muted);}
+  .step .dot{width:18px; height:18px; border-radius:50%; flex:none; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; border:2px solid #d8d2c6; color:transparent;}
+  .step.active{color:var(--ink); font-weight:600;}
+  .step.active .dot{border-color:var(--accent); border-top-color:transparent; animation:spin 1s linear infinite;}
+  .step.done{color:var(--muted);}
+  .step.done .dot{background:var(--accent); border-color:var(--accent); color:#fff;}
+  .elapsed{margin-top:12px; font-size:12.5px; color:var(--muted); font-variant-numeric:tabular-nums;}
+
+  .report-card .report-head{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px;}
+  .report-card h2{display:flex; align-items:center; gap:8px; font-size:16px; font-weight:700;}
+  .report-head .actions{display:flex; gap:8px; flex:none;}
+  .report-body{
+    font-size:14px; line-height:1.85; color:#292524;
+    background:#fcfbf8; border:1px solid var(--line); border-radius:10px; padding:18px 20px;
+    overflow-wrap:break-word;
+  }
+  .report-body h2,.report-body h3,.report-body h4{margin:18px 0 8px; line-height:1.4; font-weight:700;}
+  .report-body h2{font-size:17px; padding-bottom:6px; border-bottom:1px solid var(--line);}
+  .report-body h3{font-size:15.5px; color:var(--accent-dark);}
+  .report-body h4{font-size:14.5px;}
+  .report-body p{margin:8px 0;}
+  .report-body ul,.report-body ol{margin:8px 0 8px 22px;}
+  .report-body li{margin:3px 0;}
+  .report-body strong{color:var(--accent-dark); font-weight:700;}
+  .report-body a{color:var(--accent-dark); text-decoration:underline; text-underline-offset:3px; overflow-wrap:break-word;}
+  .report-body table{width:100%; border-collapse:collapse; margin:12px 0; font-size:13px; table-layout:fixed;}
+  .report-body th,.report-body td{border:1px solid var(--line); padding:7px 9px; text-align:left; vertical-align:top; overflow-wrap:break-word;}
+  .report-body th{background:#f1efe9; font-weight:700;}
+  .report-body blockquote{border-left:3px solid var(--accent); background:var(--accent-soft); padding:8px 12px; margin:10px 0; border-radius:0 8px 8px 0; color:#134e4a;}
+  .report-body code{background:#f1efe9; border-radius:4px; padding:1px 5px; font-size:12.5px;}
+
+  .error-card{border:1px solid #f3caca; background:var(--danger-soft); border-radius:var(--radius); padding:18px 20px; margin-bottom:18px;}
+  .error-card h3{font-size:15px; color:var(--danger); margin-bottom:6px; display:flex; align-items:center; gap:8px;}
+  .error-card p{font-size:13.5px; color:#7f1d1d; margin:4px 0;}
+  .error-card .suggest{font-size:12.5px; color:#9a3412; background:#fff; border:1px solid #f3caca; border-radius:8px; padding:8px 12px; margin-top:8px;}
+
+  .notice{background:var(--warn-soft); border:1px solid #f0dcb6; border-radius:var(--radius); padding:16px 18px; margin-bottom:18px; font-size:13.5px; color:#7c4a12; line-height:1.8;}
+  .notice b{color:#92400e;}
+  .notice ol{margin:8px 0 4px 20px;}
+
+  footer{margin-top:34px; padding-top:18px; border-top:1px solid var(--line); font-size:12px; color:var(--muted); text-align:center; line-height:1.8;}
+
+  .hidden{display:none !important;}
+
+  /* ===== 响应式 ===== */
+  @media (max-width:560px){
+    .wrap{padding:20px 14px 48px;}
+    .card{padding:18px 16px;}
+    .intent-fields{grid-template-columns:1fr; gap:10px;}
+    .brand h1{font-size:19px;}
+    .submit-row{flex-direction:column; align-items:stretch; gap:10px;}
+    .btn{width:100%;}
+    .report-head{flex-direction:column; align-items:flex-start;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <svg class="logo" viewBox="0 0 64 64" aria-hidden="true">
+      <rect width="64" height="64" rx="14" fill="#0d9488"/>
+      <path d="M20 26h24v18a4 4 0 0 1-4 4H24a4 4 0 0 1-4-4V26z" fill="#ffffff"/>
+      <path d="M20 26h24l-4-8H24l-4 8z" fill="#fbbf24"/>
+      <path d="M27 30h10v2H27zm0 6h10v2H27z" fill="#0d9488"/>
+    </svg>
+    <div class="brand">
+      <h1>求职助手</h1>
+      <p>AI 岗位匹配分析 · 真实招聘信息检索</p>
+    </div>
+  </header>
+
+  <div class="intro">
+    输入你的<strong>求职意向</strong>（最多三个顺位：企业类型 + 意向职位）和<strong>个人经历</strong>，AI 会联网检索真实招聘信息，逐岗位进行匹配度评分、优势 / 差距分析与补充建议，最终生成一份完整的求职分析报告。
+  </div>
+
+  <div id="configNotice" class="notice hidden"></div>
+
+  <form id="jobForm" novalidate>
+    <div class="card">
+      <h2><span class="step">1</span>求职意向</h2>
+      <p class="hint">第一顺位必填；第二、三顺位可留空，用于并行检索更多岗位机会。</p>
+
+      <div id="intentRows">
+        <div class="intent-row" data-rank="1">
+          <div class="row-head"><span class="rank-tag">顺位 1</span></div>
+          <div class="intent-fields">
+            <div class="field" data-key="company">
+              <label for="c1">意向企业类型</label>
+              <select id="c1" name="intent_1_company_type">
+                <option value="">请选择</option>
+                <option value="央国企">央国企</option>
+                <option value="外企">外企</option>
+                <option value="互联网大厂">互联网大厂</option>
+                <option value="互联网其他">互联网其他</option>
+                <option value="创业公司">创业公司</option>
+                <option value="其他">其他</option>
+              </select>
+              <div class="field-err">请选择企业类型</div>
+            </div>
+            <div class="field" data-key="position">
+              <label for="p1">意向职位</label>
+              <input type="text" id="p1" name="intent_1_position" placeholder="如：产品经理、数据分析师、后端开发" autocomplete="off">
+              <div class="field-err">请填写意向职位</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="intent-row" data-rank="2">
+          <div class="row-head"><span class="rank-tag optional">顺位 2 · 可选</span></div>
+          <div class="intent-fields">
+            <div class="field" data-key="company">
+              <label for="c2">意向企业类型</label>
+              <select id="c2" name="intent_2_company_type">
+                <option value="">请选择</option>
+                <option value="央国企">央国企</option>
+                <option value="外企">外企</option>
+                <option value="互联网大厂">互联网大厂</option>
+                <option value="互联网其他">互联网其他</option>
+                <option value="创业公司">创业公司</option>
+                <option value="其他">其他</option>
+              </select>
+            </div>
+            <div class="field" data-key="position">
+              <label for="p2">意向职位</label>
+              <input type="text" id="p2" name="intent_2_position" placeholder="可留空" autocomplete="off">
+            </div>
+          </div>
+        </div>
+
+        <div class="intent-row" data-rank="3">
+          <div class="row-head"><span class="rank-tag optional">顺位 3 · 可选</span></div>
+          <div class="intent-fields">
+            <div class="field" data-key="company">
+              <label for="c3">意向企业类型</label>
+              <select id="c3" name="intent_3_company_type">
+                <option value="">请选择</option>
+                <option value="央国企">央国企</option>
+                <option value="外企">外企</option>
+                <option value="互联网大厂">互联网大厂</option>
+                <option value="互联网其他">互联网其他</option>
+                <option value="创业公司">创业公司</option>
+                <option value="其他">其他</option>
+              </select>
+            </div>
+            <div class="field" data-key="position">
+              <label for="p3">意向职位</label>
+              <input type="text" id="p3" name="intent_3_position" placeholder="可留空" autocomplete="off">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="step">2</span>个人经历</h2>
+      <p class="hint">教育背景、工作经历、项目经验、技能证书等，写得越具体，匹配分析越准确。</p>
+      <div class="field">
+        <textarea id="experience" name="user_experience" placeholder="例如：&#10;· 某大学计算机硕士，3 年后端开发经验（Java / Go）&#10;· 参与过两个千万级用户项目，负责核心模块架构&#10;· 有云计算 / 大数据相关项目经历"></textarea>
+        <div class="field-err" id="expErr">请填写个人经历</div>
+      </div>
+    </div>
+
+    <div class="submit-row">
+      <button type="submit" class="btn" id="submitBtn">
+        <span class="spinner"></span>
+        <span class="btn-text">生成求职分析报告</span>
+      </button>
+      <span class="note" id="formNote">运行约需 1–3 分钟，请保持页面打开</span>
+    </div>
+  </form>
+
+  <details class="settings" style="margin-top:18px;">
+    <summary>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      接口设置（代理地址）
+    </summary>
+    <div class="settings-body">
+      <div class="settings-grid">
+        <div class="field">
+          <label for="cfgBase">API 代理地址</label>
+          <input type="text" id="cfgBase" placeholder="https://coze-job-assistant-proxy.unim1012.workers.dev" autocomplete="off">
+        </div>
+      </div>
+      <button type="button" class="btn" id="saveCfg" style="padding:9px 18px; font-size:14px;">保存配置</button>
+      <div class="config-status" id="cfgStatus"></div>
+      <div class="settings-note" style="margin-top:14px;">
+        <b>已默认接入 Cloudflare 代理，无需填写令牌。</b>
+        代理地址指向 Cloudflare Worker（<code>coze-job-assistant-proxy.unim1012.workers.dev</code>），
+        访问令牌保存在代理服务端，浏览器与代码仓库中均不包含令牌。
+        除非代理地址变更，否则无需修改本设置。
+      </div>
+    </div>
+  </details>
+
+  <div class="result" id="resultArea">
+    <div class="card status-card" id="statusCard">
+      <h2><span class="step">3</span>正在生成报告</h2>
+      <div class="steps" id="steps">
+        <div class="step" data-s="launch"><span class="dot">✓</span><span>启动工作流</span></div>
+        <div class="step" data-s="search"><span class="dot">✓</span><span>联网检索真实招聘信息</span></div>
+        <div class="step" data-s="match"><span class="dot">✓</span><span>逐岗位匹配分析</span></div>
+        <div class="step" data-s="report"><span class="dot">✓</span><span>生成分析报告</span></div>
+      </div>
+      <div class="elapsed" id="elapsed">已用时 0 秒</div>
+    </div>
+
+    <div class="error-card hidden" id="errorCard">
+      <h3 id="errTitle">运行失败</h3>
+      <p id="errMsg"></p>
+      <p class="suggest" id="errSuggest"></p>
+    </div>
+
+    <div class="card report-card hidden" id="reportCard">
+      <div class="report-head">
+        <h2>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          求职分析报告
+        </h2>
+        <div class="actions">
+          <button type="button" class="btn btn-ghost" id="copyBtn" style="padding:7px 14px; font-size:13px;">复制报告</button>
+        </div>
+      </div>
+      <div class="report-body" id="reportBody"></div>
+    </div>
+  </div>
+
+  <footer>
+    报告由 Coze 工作流联网检索生成，招聘信息以来源链接为准，仅供参考。<br>
+    求职助手 · 基于 Coze 求职助手工作流
+  </footer>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  var LS_BASE='coze_proxy_base';
+  var DEFAULT_BASE='https://coze-job-assistant-proxy.unim1012.workers.dev';
+  var POLL_INTERVAL=5000, MAX_WAIT=15*60*1000;
+
+  function safeGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+  function safeSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+
+  var cfg={
+    base: safeGet(LS_BASE) || DEFAULT_BASE
+  };
+  var reportRaw='';
+  var running=false;
+
+  var $=function(s,r){ return (r||document).querySelector(s); };
+  var $$=function(s,r){ return Array.prototype.slice.call((r||document).querySelectorAll(s)); };
+  var sleep=function(ms){ return new Promise(function(res){ setTimeout(res,ms); }); };
+
+  /* ===== 初始化 ===== */
+  function init(){
+    $('#cfgBase').value=cfg.base;
+    renderConfigNotice();
+    $('#saveCfg').addEventListener('click', saveConfig);
+    $('#jobForm').addEventListener('submit', onSubmit);
+    $('#copyBtn').addEventListener('click', copyReport);
+    $('#cfgBase').addEventListener('change', function(){ cfg.base=this.value.trim()||DEFAULT_BASE; });
+  }
+
+  function renderConfigNotice(){
+    $('#configNotice').classList.add('hidden');
+  }
+
+  /* ===== 配置 ===== */
+  function saveConfig(){
+    cfg.base=$('#cfgBase').value.trim()||DEFAULT_BASE;
+    safeSet(LS_BASE,cfg.base);
+    var st=$('#cfgStatus');
+    st.className='config-status ok';
+    st.textContent='代理地址已保存。';
+    renderConfigNotice();
+  }
+
+  /* ===== 表单校验 ===== */
+  function mark(field,bad){
+    field.classList.toggle('invalid',bad);
+    var el=field.querySelector('.field-err');
+    if(el) el.style.display=bad?'block':'none';
+  }
+
+  function validate(){
+    var ok=true, partialMsg='';
+    var c1=$('#c1'), p1=$('#p1');
+    var badC1=!c1.value, badP1=!p1.value.trim();
+    mark(c1.closest('.field'),badC1); mark(p1.closest('.field'),badP1);
+    if(badC1||badP1) ok=false;
+
+    var exp=$('#experience');
+    var badExp=!exp.value.trim();
+    mark(exp.closest('.field'),badExp);
+    $('#expErr').style.display=badExp?'block':'none';
+    if(badExp) ok=false;
+
+    $$('.intent-row').forEach(function(row){
+      var rank=row.getAttribute('data-rank');
+      if(rank==='1') return;
+      var c=row.querySelector('select').value, p=row.querySelector('input').value.trim();
+      if(!!c!==!!p){
+        mark(row.querySelector('.field[data-key=company]'),!c);
+        mark(row.querySelector('.field[data-key=position]'),!p);
+        partialMsg='顺位 '+rank+' 需同时填写企业类型和职位，或整行留空。';
+        ok=false;
+      }
+    });
+    $('#formNote').textContent=partialMsg||'运行约需 1–3 分钟，请保持页面打开';
+    return ok;
+  }
+
+  function collectParams(){
+    var p={};
+    $$('.intent-row').forEach(function(row){
+      var rank=row.getAttribute('data-rank');
+      var c=row.querySelector('select').value, pos=row.querySelector('input').value.trim();
+      if(!c && !pos) return;
+      p['intent_'+rank+'_company_type']=c;
+      p['intent_'+rank+'_position']=pos;
+    });
+    p['user_experience']=$('#experience').value.trim();
+    return p;
+  }
+
+  /* ===== 工作流调用（经 Cloudflare 代理，异步执行 + 轮询） ===== */
+  function extractErrText(data){
+    if(!data) return '';
+    if(typeof data==='string') return data;
+    if(data.detail && data.detail.error_message) return data.detail.error_message;
+    if(data.error && data.error.message) return data.error.message;
+    if(data.message) return data.message;
+    if(data.msg) return data.msg;
+    return '';
+  }
+  function extractErrCode(data){
+    if(!data) return '';
+    if(typeof data==='object'){
+      if(data.detail && data.detail.error_code) return String(data.detail.error_code);
+      if(data.error && data.error.code) return String(data.error.code);
+      if(data.code!==undefined) return String(data.code);
+    }
+    return '';
+  }
+  function api(path,opts){
+    return fetch(cfg.base+path,opts).then(function(res){
+      return res.text().catch(function(){ return ''; }).then(function(txt){
+        var data=null;
+        if(txt){ try{ data=JSON.parse(txt); }catch(e){ data=txt; } }
+        if(!res.ok){
+          var e=new Error(extractErrText(data)||('接口异常（HTTP '+res.status+'）'));
+          e.code=extractErrCode(data)||String(res.status);
+          e.kind='api';
+          throw e;
+        }
+        return data;
+      });
+    }).catch(function(err){
+      if(err && (err.kind==='api' || err.code)) throw err;
+      var e=new Error('无法连接服务：'+(err&&err.message||'网络错误')); e.kind='network'; throw e;
+    });
+  }
+
+  function startRun(params){
+    return api('/async_run',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(params)
+    }).then(function(d){ return d.task_id; });
+  }
+
+  function pollRun(taskId){
+    var t0=Date.now();
+    function tick(){
+      var elapsed=Date.now()-t0;
+      renderElapsed(elapsed);
+      renderStepsByElapsed(elapsed);
+      return elapsed;
+    }
+    function loop(){
+      return api('/task/'+encodeURIComponent(taskId)).then(function(d){
+        var st=d && d.status;
+        if(st==='succeeded') return d;
+        if(st==='failed'){
+          var e=new Error((d&&d.error&&d.error.error_message)||'工作流运行失败');
+          e.code='run_failed'; throw e;
+        }
+        if(tick()>=MAX_WAIT){ var e2=new Error('等待结果超过 15 分钟，请稍后重试'); e2.code='wait_timeout'; throw e2; }
+        return sleep(POLL_INTERVAL).then(loop);
+      });
+    }
+    return loop();
+  }
+
+  /* ===== 提交 ===== */
+  function onSubmit(e){
+    e.preventDefault();
+    if(running) return;
+    if(!validate()) return;
+    if(!cfg.base){
+      $('.settings').open=true;
+      showError({ title:'尚未配置接口', msg:'请先在「接口设置」中填写代理地址并保存。',
+        sug:'展开上方「接口设置」，确认代理地址正确后保存。' });
+      return;
+    }
+    var params=collectParams();
+    running=true;
+    setLoading(true);
+    showStatus(true);
+    setStep(0);
+    renderElapsed(0);
+    startRun(params).then(function(taskId){
+      setStep(1);
+      return pollRun(taskId);
+    }).then(function(result){
+      var report=extractOutput(result.result);
+      showReport(report);
+    }).catch(function(err){
+      showError(err);
+    }).then(function(){
+      running=false;
+      setLoading(false);
+    });
+  }
+
+  /* ===== 状态与步骤 ===== */
+  function setStep(i){
+    var steps=$$('#steps .step');
+    steps.forEach(function(s,idx){
+      s.classList.toggle('done', idx<i);
+      s.classList.toggle('active', idx===i);
+    });
+  }
+  function renderStepsByElapsed(sec){
+    var i = sec<15 ? 1 : (sec<50 ? 2 : 3);
+    setStep(i);
+  }
+  function renderElapsed(ms){
+    var sec=Math.floor(ms/1000);
+    $('#elapsed').textContent = sec<60
+      ? '已用时 '+sec+' 秒'
+      : '已用时 '+Math.floor(sec/60)+' 分 '+(sec%60)+' 秒';
+  }
+  function setLoading(on){
+    var b=$('#submitBtn');
+    b.classList.toggle('loading',on);
+    b.disabled=on;
+  }
+  function showStatus(show){
+    $('#resultArea').classList.toggle('show',show);
+    $('#statusCard').classList.remove('hidden');
+    $('#reportCard').classList.add('hidden');
+    $('#errorCard').classList.add('hidden');
+  }
+
+  /* ===== 错误提示 ===== */
+  var SUGGEST={
+    '401':'代理中的访问令牌无效或已过期，请检查 Cloudflare Worker 中的 Token 配置。',
+    '400':'请求参数有误，请检查意向与经历的填写是否完整、企业类型是否从下拉列表中选择。',
+    '404':'代理路径不存在，请检查「接口设置」中的代理地址是否正确。',
+    '201002':'提交的参数未通过工作流校验。注意：企业类型需从下拉列表选择；职位不能为空；第二、三顺位若留空请整行不填。',
+    '604001':'你的 Coze 账号 LLM 资源配额不足，请等待配额恢复或在 Coze 控制台补充资源后重试。',
+    'run_failed':'工作流内部运行失败，可稍后重试；若持续失败，请到 Coze 的「运行记录」中查看具体原因。',
+    'wait_timeout':'等待结果超过 15 分钟，可稍后重试，或到 Coze「运行记录」中查看。',
+    'network':'无法连接服务，请检查网络；若页面以 file:// 方式本地打开，建议部署到线上后再使用。'
+  };
+  function showError(err){
+    $('#statusCard').classList.add('hidden');
+    $('#reportCard').classList.add('hidden');
+    var title=err.title||'运行失败', msg=err.msg||err.message||'未知错误', sug=err.sug||'';
+    if(!sug && err.kind==='network') sug=SUGGEST.network;
+    if(!sug && err.code) sug=SUGGEST[err.code]||'';
+    $('#errTitle').textContent=title;
+    $('#errMsg').textContent=msg;
+    $('#errSuggest').textContent=sug;
+    $('#errorCard').classList.remove('hidden');
+    $('#resultArea').classList.add('show');
+    $('#resultArea').scrollIntoView({behavior:'smooth',block:'start'});
+  }
+
+  /* ===== 输出解析与渲染 ===== */
+  function extractOutput(result){
+    if(typeof result==='string') return result;
+    if(!result || typeof result!=='object') return JSON.stringify(result,null,2);
+    var labels={
+      final_report:'最终综合分析报告',
+      formatted_resume:'优化简历',
+      interview_tips:'面试注意事项与建议'
+    };
+    var parts=[];
+    Object.keys(labels).forEach(function(k){
+      if(typeof result[k]==='string' && result[k].trim()){
+        parts.push('## '+labels[k]+'\n\n'+result[k].trim());
+      }
+    });
+    if(parts.length) return parts.join('\n\n---\n\n');
+    var best='';
+    (function walk(o){
+      if(typeof o==='string'){ if(o.length>best.length) best=o; }
+      else if(Array.isArray(o)){ o.forEach(walk); }
+      else if(o && typeof o==='object'){ Object.keys(o).forEach(function(k){ walk(o[k]); }); }
+    })(result);
+    return best||JSON.stringify(result,null,2);
+  }
+
+  function escapeHtml(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function inline(s){
+    var h=s;
+    h=h.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+    h=h.replace(/`([^`]+)`/g,'<code>$1</code>');
+    h=h.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,'<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+    return h;
+  }
+
+  function renderMd(text){
+    var esc=escapeHtml(text);
+    var lines=esc.split('\n');
+    var html='', inList=null, table=[];
+    function flushList(){
+      if(inList){ html+=inList==='ul'?'</ul>':'</ol>'; inList=null; }
+    }
+    function parseRow(r){
+      return r.trim().replace(/^\|/,'').replace(/\|$/,'').split('|').map(function(c){ return c.trim(); });
+    }
+    function flushTable(){
+      if(!table.length) return;
+      var nCols=0;
+      table.forEach(function(r){ nCols=Math.max(nCols,parseRow(r).length); });
+      var cell=function(i){
+        var a=parseRow(table[i]);
+        while(a.length<nCols) a.push('');
+        return a;
+      };
+      var w=(100/nCols).toFixed(2)+'%';
+      var col='<colgroup>';
+      for(var i=0;i<nCols;i++) col+='<col style="width:'+w+'">';
+      col+='</colgroup>';
+      var out='<table>'+col+'<thead><tr>';
+      cell(0).forEach(function(c){ out+='<th>'+inline(c)+'</th>'; });
+      out+='</tr></thead><tbody>';
+      for(var r=2;r<table.length;r++){
+        out+='<tr>';
+        cell(r).forEach(function(c){ out+='<td>'+inline(c)+'</td>'; });
+        out+='</tr>';
+      }
+      out+='</tbody></table>';
+      html+=out;
+      table=[];
+    }
+    var isSep=/^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/;
+    lines.forEach(function(raw){
+      var line=raw.replace(/\s+$/,'');
+      if(!line.trim()){ flushList(); flushTable(); return; }
+      if(line.trim().charAt(0)==='|'){
+        flushList();
+        var sepCheck=line.trim();
+        if(table.length && isSep.test(sepCheck) && sepCheck.indexOf('-')>-1){ table.push(line); return; }
+        if(table.length) flushTable();
+        table.push(line);
+        return;
+      }
+      flushTable();
+      var t=line.trim(), m;
+      if(m=t.match(/^(#{1,4})\s+(.*)$/)){
+        flushList();
+        var lvl=Math.min(m[1].length,4)+1;
+        html+='<h'+lvl+'>'+inline(m[2])+'</h'+lvl+'>';
+        return;
+      }
+      if(/^[-*]\s+/.test(t)){
+        if(inList!=='ul'){ flushList(); html+='<ul>'; inList='ul'; }
+        html+='<li>'+inline(t.replace(/^[-*]\s+/,''))+'</li>';
+        return;
+      }
+      if(/^\d+\.\s+/.test(t)){
+        if(inList!=='ol'){ flushList(); html+='<ol>'; inList='ol'; }
+        html+='<li>'+inline(t.replace(/^\d+\.\s+/,''))+'</li>';
+        return;
+      }
+      flushList();
+      if(t.indexOf('> ')>-1 && t.indexOf('> ')!==0){ html+='<p>'+inline(t)+'</p>'; return; }
+      if(t.substring(0,2)==='> '){ html+='<blockquote>'+inline(t.substring(2))+'</blockquote>'; return; }
+      html+='<p>'+inline(t)+'</p>';
+    });
+    flushList();
+    flushTable();
+    return html;
+  }
+
+  function showReport(text){
+    reportRaw=text;
+    $('#statusCard').classList.add('hidden');
+    $('#reportBody').innerHTML=renderMd(text);
+    $('#reportCard').classList.remove('hidden');
+    $('#resultArea').classList.add('show');
+    $('#resultArea').scrollIntoView({behavior:'smooth',block:'start'});
+  }
+
+  /* ===== 复制 ===== */
+  function copyReport(){
+    if(!reportRaw) return;
+    var b=$('#copyBtn');
+    function done(){ b.textContent='已复制'; setTimeout(function(){ b.textContent='复制报告'; },1500); }
+    function fallback(){
+      var ta=document.createElement('textarea');
+      ta.value=reportRaw;
+      ta.style.position='fixed'; ta.style.opacity='0';
+      document.body.appendChild(ta);
+      ta.select();
+      try{ document.execCommand('copy'); done(); }catch(e){}
+      document.body.removeChild(ta);
+    }
+    if(navigator.clipboard && window.isSecureContext){
+      navigator.clipboard.writeText(reportRaw).then(done,fallback);
+    } else fallback();
+  }
+
+  document.addEventListener('DOMContentLoaded', init);
+})();
+</script>
+</body>
+</html>
