@@ -1,0 +1,9 @@
+# 敏感文件，禁止上传
+.secrets/
+
+# 本地自检产物
+_shots/
+_backup/
+
+# 系统文件
+.DS_Store
