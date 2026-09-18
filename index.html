@@ -64,6 +64,14 @@
   .btn:disabled{background:#9cc9c4; cursor:not-allowed;}
   .btn-ghost{background:#fff; color:var(--ink); border:1px solid var(--line);}
   .btn-ghost:hover{background:#f6f4ef;}
+  .btn-mini{
+    display:inline-flex; align-items:center; gap:5px;
+    font:inherit; font-size:12px; font-weight:600; color:var(--accent);
+    background:#eef8f6; border:1px solid #cdeee9; border-radius:8px;
+    padding:3px 10px; cursor:pointer; margin-left:8px; vertical-align:middle;
+    transition:background .15s;
+  }
+  .btn-mini:hover{background:#e0f3f0;}
   .submit-row{margin-top:6px; display:flex; align-items:center; gap:14px;}
   .submit-row .note{font-size:12.5px; color:var(--muted);}
 
@@ -171,7 +179,7 @@
   <form id="jobForm" novalidate>
     <div class="card">
       <h2><span class="step">1</span>求职意向</h2>
-      <p class="hint">第一顺位必填；第二、三顺位可留空，用于并行检索更多岗位机会。</p>
+      <p class="hint">第一顺位必填；第二、三顺位可留空，用于并行检索更多岗位机会。<button type="button" class="btn-mini" id="fillDemo">填入示例</button></p>
 
       <div id="intentRows">
         <div class="intent-row" data-rank="1">
@@ -352,6 +360,19 @@
     $('#jobForm').addEventListener('submit', onSubmit);
     $('#copyBtn').addEventListener('click', copyReport);
     $('#cfgBase').addEventListener('change', function(){ cfg.base=this.value.trim()||DEFAULT_BASE; });
+    $('#fillDemo').addEventListener('click', fillDemo);
+  }
+
+  /* ===== 填入示例 ===== */
+  function fillDemo(){
+    $('#c1').value='互联网大厂'; $('#p1').value='产品经理';
+    $('#c2').value='外企'; $('#p2').value='数据分析师';
+    $('#c3').value=''; $('#p3').value='';
+    $('#experience').value='某大学计算机硕士，3 年后端开发经验（Java / Go）\n参与过两个千万级用户项目，负责核心模块架构设计\n熟悉推荐系统与数据管道，有云计算 / 大数据项目经历';
+    $$('.field.invalid').forEach(function(f){ f.classList.remove('invalid'); });
+    $$('.field-err').forEach(function(e){ e.style.display='none'; });
+    $('#formNote').textContent='示例已填入，可直接提交体验。';
+    $('#fillDemo').scrollIntoView({behavior:'smooth',block:'nearest'});
   }
 
   function renderConfigNotice(){
