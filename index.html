@@ -53,6 +53,23 @@
   .field-err{font-size:12px; color:var(--danger); margin-top:4px; display:none;}
   .field.invalid select, .field.invalid input{border-color:var(--danger);}
 
+  /* ===== 使用意图切换 ===== */
+  .intent-toggle{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .toggle-opt{position:relative; cursor:pointer;}
+  .toggle-opt input{position:absolute; opacity:0; pointer-events:none;}
+  .toggle-body{
+    display:block; border:1.5px solid var(--line); border-radius:12px; padding:13px 15px;
+    background:#fcfbf8; transition:border-color .15s, background .15s, box-shadow .15s;
+  }
+  .toggle-body b{display:block; font-size:14px; color:var(--ink);}
+  .toggle-body small{display:block; font-size:12px; color:var(--muted); margin-top:3px; line-height:1.5;}
+  .toggle-opt input:checked + .toggle-body{
+    border-color:var(--accent); background:var(--accent-soft);
+    box-shadow:0 0 0 3px rgba(13,148,136,.12);
+  }
+  .toggle-opt input:checked + .toggle-body b{color:var(--accent-dark);}
+  @media (max-width:560px){ .intent-toggle{grid-template-columns:1fr;} }
+
   .btn{
     display:inline-flex; align-items:center; justify-content:center; gap:8px;
     font:inherit; font-size:15px; font-weight:700; color:#fff; background:var(--accent);
@@ -171,15 +188,36 @@
   </header>
 
   <div class="intro">
-    输入你的<strong>求职意向</strong>（最多三个顺位：企业类型 + 意向职位）和<strong>个人经历</strong>，AI 会联网检索真实招聘信息，逐岗位进行匹配度评分、优势 / 差距分析与补充建议，最终生成一份完整的求职分析报告。
+    先告诉我你有没有明确的求职方向：<strong>有</strong>就直接填意向（最多三个顺位），<strong>不确定</strong>就把经历交给我，AI 会结合互联网信息给出方向建议再帮你设定意向。随后按意向<strong>并行检索真实招聘信息</strong>、逐岗匹配分析，最终生成完整的求职分析报告。
   </div>
 
   <div id="configNotice" class="notice hidden"></div>
 
   <form id="jobForm" novalidate>
     <div class="card">
-      <h2><span class="step">1</span>求职意向</h2>
-      <p class="hint">第一顺位必填；第二、三顺位可留空，用于并行检索更多岗位机会。<button type="button" class="btn-mini" id="fillDemo">填入示例</button></p>
+      <h2><span class="step">1</span>使用意图</h2>
+      <p class="hint">有没有明确的求职意向？选择后表单会自动调整填写方式。</p>
+      <div class="intent-toggle" id="intentToggle">
+        <label class="toggle-opt" data-val="clear">
+          <input type="radio" name="has_clear_intent" value="明确" checked>
+          <span class="toggle-body">
+            <b>有明确意向</b>
+            <small>直接填写想去的企业类型和职位，AI 按意向检索</small>
+          </span>
+        </label>
+        <label class="toggle-opt" data-val="uncertain">
+          <input type="radio" name="has_clear_intent" value="不确定">
+          <span class="toggle-body">
+            <b>还不确定</b>
+            <small>先写个人经历，AI 分析后给求职方向建议再设定意向</small>
+          </span>
+        </label>
+      </div>
+    </div>
+
+    <div class="card" id="intentCard">
+      <h2><span class="step">2</span>求职意向</h2>
+      <p class="hint">第一顺位建议填写；第二、三顺位可留空，用于并行检索更多岗位机会。<button type="button" class="btn-mini" id="fillDemo">填入示例</button></p>
 
       <div id="intentRows">
         <div class="intent-row" data-rank="1">
@@ -253,8 +291,8 @@
     </div>
 
     <div class="card">
-      <h2><span class="step">2</span>个人经历</h2>
-      <p class="hint">教育背景、工作经历、项目经验、技能证书等，写得越具体，匹配分析越准确。</p>
+      <h2><span class="step">3</span>个人经历</h2>
+      <p class="hint" id="expHint">教育背景、工作经历、项目经验、技能证书等，写得越具体，匹配分析越准确。<b id="expNeed"></b></p>
       <div class="field">
         <textarea id="experience" name="user_experience" placeholder="例如：&#10;· 某大学计算机硕士，3 年后端开发经验（Java / Go）&#10;· 参与过两个千万级用户项目，负责核心模块架构&#10;· 有云计算 / 大数据相关项目经历"></textarea>
         <div class="field-err" id="expErr">请填写个人经历</div>
@@ -295,7 +333,7 @@
 
   <div class="result" id="resultArea">
     <div class="card status-card" id="statusCard">
-      <h2><span class="step">3</span>正在生成报告</h2>
+      <h2><span class="step">4</span>正在生成报告</h2>
       <div class="steps" id="steps">
         <div class="step" data-s="launch"><span class="dot">✓</span><span>启动工作流</span></div>
         <div class="step" data-s="search"><span class="dot">✓</span><span>联网检索真实招聘信息</span></div>
@@ -361,10 +399,28 @@
     $('#copyBtn').addEventListener('click', copyReport);
     $('#cfgBase').addEventListener('change', function(){ cfg.base=this.value.trim()||DEFAULT_BASE; });
     $('#fillDemo').addEventListener('click', fillDemo);
+    $$('#intentToggle input').forEach(function(r){
+      r.addEventListener('change', onIntentChange);
+    });
+    onIntentChange();
+  }
+
+  /* ===== 使用意图切换 ===== */
+  function currentIntent(){
+    var sel=$('#intentToggle input:checked');
+    return sel ? sel.value : '明确';
+  }
+  function onIntentChange(){
+    var clear = currentIntent()==='明确';
+    $('#intentCard').classList.toggle('hidden', !clear);
+    $('#expNeed').textContent = clear ? '' : '（不确定意向时必填，AI 将据此分析方向）';
+    $('#expHint').style.color = clear ? '' : 'var(--warn)';
   }
 
   /* ===== 填入示例 ===== */
   function fillDemo(){
+    $('#intentToggle input[value=明确]').checked=true;
+    onIntentChange();
     $('#c1').value='互联网大厂'; $('#p1').value='产品经理';
     $('#c2').value='外企'; $('#p2').value='数据分析师';
     $('#c3').value=''; $('#p3').value='';
@@ -398,10 +454,14 @@
 
   function validate(){
     var ok=true, partialMsg='';
-    var c1=$('#c1'), p1=$('#p1');
-    var badC1=!c1.value, badP1=!p1.value.trim();
-    mark(c1.closest('.field'),badC1); mark(p1.closest('.field'),badP1);
-    if(badC1||badP1) ok=false;
+    var clear = currentIntent()==='明确';
+
+    if(clear){
+      var c1=$('#c1'), p1=$('#p1');
+      var badC1=!c1.value, badP1=!p1.value.trim();
+      mark(c1.closest('.field'),badC1); mark(p1.closest('.field'),badP1);
+      if(badC1||badP1) ok=false;
+    }
 
     var exp=$('#experience');
     var badExp=!exp.value.trim();
@@ -411,7 +471,7 @@
 
     $$('.intent-row').forEach(function(row){
       var rank=row.getAttribute('data-rank');
-      if(rank==='1') return;
+      if(rank==='1' || !clear) return;
       var c=row.querySelector('select').value, p=row.querySelector('input').value.trim();
       if(!!c!==!!p){
         mark(row.querySelector('.field[data-key=company]'),!c);
@@ -420,19 +480,22 @@
         ok=false;
       }
     });
-    $('#formNote').textContent=partialMsg||'运行约需 1–3 分钟，请保持页面打开';
+    $('#formNote').textContent=partialMsg||(clear?'运行约需 1–3 分钟，请保持页面打开':'不确定意向时，AI 会先分析经历给出方向建议，运行约需 2–4 分钟');
     return ok;
   }
 
   function collectParams(){
     var p={};
-    $$('.intent-row').forEach(function(row){
-      var rank=row.getAttribute('data-rank');
-      var c=row.querySelector('select').value, pos=row.querySelector('input').value.trim();
-      if(!c && !pos) return;
-      p['intent_'+rank+'_company_type']=c;
-      p['intent_'+rank+'_position']=pos;
-    });
+    p['has_clear_intent']=currentIntent();
+    if(currentIntent()==='明确'){
+      $$('.intent-row').forEach(function(row){
+        var rank=row.getAttribute('data-rank');
+        var c=row.querySelector('select').value, pos=row.querySelector('input').value.trim();
+        if(!c && !pos) return;
+        p['intent_'+rank+'_company_type']=c;
+        p['intent_'+rank+'_position']=pos;
+      });
+    }
     p['user_experience']=$('#experience').value.trim();
     return p;
   }
@@ -572,7 +635,7 @@
     '401':'代理中的访问令牌无效或已过期，请检查 Cloudflare Worker 中的 Token 配置。',
     '400':'请求参数有误，请检查意向与经历的填写是否完整、企业类型是否从下拉列表中选择。',
     '404':'代理路径不存在，请检查「接口设置」中的代理地址是否正确。',
-    '201002':'提交的参数未通过工作流校验。注意：企业类型需从下拉列表选择；职位不能为空；第二、三顺位若留空请整行不填。',
+    '201002':'提交的参数未通过工作流校验。注意：企业类型需从下拉列表选择；「不确定意向」时不要填写顺位意向，只提交经历即可；意向顺位若留空请整行不填。',
     '604001':'你的 Coze 账号 LLM 资源配额不足，请等待配额恢复或在 Coze 控制台补充资源后重试。',
     'run_failed':'工作流内部运行失败，可稍后重试；若持续失败，请到 Coze 的「运行记录」中查看具体原因。',
     'wait_timeout':'等待结果超过 15 分钟，可稍后重试，或到 Coze「运行记录」中查看。',
@@ -593,18 +656,55 @@
   }
 
   /* ===== 输出解析与渲染 ===== */
+  function prettyKey(k){
+    var map={
+      final_report:'最终综合分析报告',
+      formatted_resume:'优化简历',
+      interview_tips:'面试注意事项与建议',
+      job_list:'招聘信息陈列',
+      job_listings:'招聘信息陈列',
+      jobs:'招聘信息陈列',
+      recruitment_list:'招聘信息陈列',
+      rank_results:'招聘信息陈列',
+      job_search_result:'招聘信息陈列',
+      career_advice:'求职方向建议',
+      skill_advice:'技能学习建议',
+      full_resume:'可直接投递的完整简历'
+    };
+    if(map[k]) return map[k];
+    return k.replace(/_/g,' ').replace(/\b\w/g,function(c){ return c.toUpperCase(); });
+  }
+  function listToMd(arr){
+    return arr.map(function(it){
+      if(typeof it==='string') return '- '+it.trim();
+      if(!it || typeof it!=='object') return '- '+String(it);
+      var title=it.title||it.name||it.position||it.job_title||it.company||'岗位';
+      var link=it.link||it.url||it.source_url||it.source||'';
+      var desc=it.summary||it.description||it.detail||it.company||it.match||'';
+      var seg='- **'+String(title).trim()+'**';
+      if(link) seg+='　['+String(link).trim()+']('+String(link).trim()+')';
+      if(desc) seg+='　'+String(desc).trim();
+      return seg;
+    }).join('\n');
+  }
   function extractOutput(result){
     if(typeof result==='string') return result;
     if(!result || typeof result!=='object') return JSON.stringify(result,null,2);
-    var labels={
-      final_report:'最终综合分析报告',
-      formatted_resume:'优化简历',
-      interview_tips:'面试注意事项与建议'
-    };
     var parts=[];
-    Object.keys(labels).forEach(function(k){
-      if(typeof result[k]==='string' && result[k].trim()){
-        parts.push('## '+labels[k]+'\n\n'+result[k].trim());
+    Object.keys(result).forEach(function(k){
+      var v=result[k];
+      if(typeof v==='string' && v.trim()){
+        parts.push('## '+prettyKey(k)+'\n\n'+v.trim());
+      } else if(Array.isArray(v) && v.length){
+        parts.push('## '+prettyKey(k)+'\n\n'+listToMd(v));
+      } else if(v && typeof v==='object'){
+        var sub=[];
+        Object.keys(v).forEach(function(sk){
+          var sv=v[sk];
+          if(typeof sv==='string' && sv.trim()) sub.push('- **'+sk+'**　'+sv.trim());
+          else if(Array.isArray(sv) && sv.length) sub.push('- **'+sk+'**\n'+listToMd(sv));
+        });
+        if(sub.length) parts.push('## '+prettyKey(k)+'\n\n'+sub.join('\n'));
       }
     });
     if(parts.length) return parts.join('\n\n---\n\n');
