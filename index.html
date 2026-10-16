@@ -104,6 +104,8 @@
   details.settings > summary:hover{color:var(--ink);}
   details.settings[open] > summary{border-bottom:1px solid var(--line);}
   .settings-body{padding:16px 18px 18px;}
+  .settings-label{font-size:12.5px; color:var(--muted); margin-bottom:10px; font-weight:500;}
+  .mode-toggle .toggle-body{padding:11px 14px;}
   .settings-grid{display:grid; gap:14px; margin-bottom:14px;}
   .settings-note{font-size:12.5px; color:var(--muted); background:#f1efe9; border-radius:9px; padding:10px 12px; line-height:1.7;}
   .settings-note code{background:#fff; border:1px solid var(--line); border-radius:4px; padding:0 5px; font-size:11.5px; color:#0f766e;}
@@ -311,23 +313,65 @@
   <details class="settings" style="margin-top:18px;">
     <summary>
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      接口设置（代理地址）
+      接入设置（模型方式）
     </summary>
     <div class="settings-body">
-      <div class="settings-grid">
-        <div class="field">
-          <label for="cfgBase">API 代理地址</label>
-          <input type="text" id="cfgBase" placeholder="https://coze-job-assistant-proxy.unim1012.workers.dev" autocomplete="off">
+      <div class="settings-label">选择使用哪种模型方式</div>
+      <div class="intent-toggle mode-toggle" id="modeToggle" style="margin-bottom:14px;">
+        <label class="toggle-opt" data-val="coze">
+          <input type="radio" name="accessMode" value="coze" checked>
+          <span class="toggle-body">
+            <b>Coze 工作流（演示）</b>
+            <small>走站长代理与额度，免配置，人多时可能排队或配额不足</small>
+          </span>
+        </label>
+        <label class="toggle-opt" data-val="own">
+          <input type="radio" name="accessMode" value="own">
+          <span class="toggle-body">
+            <b>自带模型 API</b>
+            <small>填自己的 OpenAI 兼容接口 Key，费用由你的模型服务商按量计</small>
+          </span>
+        </label>
+      </div>
+
+      <div id="cfgCozePanel">
+        <div class="settings-grid">
+          <div class="field">
+            <label for="cfgBase">API 代理地址</label>
+            <input type="text" id="cfgBase" placeholder="https://coze-job-assistant-proxy.unim1012.workers.dev" autocomplete="off">
+          </div>
+        </div>
+        <div class="settings-note">
+          <b>已默认接入 Cloudflare 代理，无需填写令牌。</b>
+          代理地址指向 Cloudflare Worker（<code>coze-job-assistant-proxy.unim1012.workers.dev</code>），
+          访问令牌保存在代理服务端，浏览器与代码仓库中均不包含令牌。
         </div>
       </div>
+
+      <div id="cfgOwnPanel" class="hidden">
+        <div class="settings-grid">
+          <div class="field">
+            <label for="llmBase">API 地址（OpenAI 兼容）</label>
+            <input type="text" id="llmBase" placeholder="https://api.openai.com/v1" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="llmKey">API Key</label>
+            <input type="password" id="llmKey" placeholder="sk-..." autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="llmModel">模型名称</label>
+            <input type="text" id="llmModel" placeholder="gpt-4o-mini" autocomplete="off">
+          </div>
+        </div>
+        <div class="settings-note">
+          <b>Key 仅保存在你的浏览器本地（localStorage），调用时直接发往你填写的 API 地址，不会上传到本站服务器。</b>
+          支持 OpenAI、DeepSeek、Moonshot、智谱、豆包火山方舟等 OpenAI 兼容接口（部分服务商需自建转发以支持浏览器跨域）。
+          纯大模型无法联网，报告中的岗位画像与匹配分析基于行业通用知识生成，不含实时在招岗位。
+        </div>
+      </div>
+
       <button type="button" class="btn" id="saveCfg" style="padding:9px 18px; font-size:14px;">保存配置</button>
       <div class="config-status" id="cfgStatus"></div>
-      <div class="settings-note" style="margin-top:14px;">
-        <b>已默认接入 Cloudflare 代理，无需填写令牌。</b>
-        代理地址指向 Cloudflare Worker（<code>coze-job-assistant-proxy.unim1012.workers.dev</code>），
-        访问令牌保存在代理服务端，浏览器与代码仓库中均不包含令牌。
-        除非代理地址变更，否则无需修改本设置。
-      </div>
     </div>
   </details>
 
@@ -364,8 +408,8 @@
   </div>
 
   <footer>
-    报告由 Coze 工作流联网检索生成，招聘信息以来源链接为准，仅供参考。<br>
-    求职助手 · 基于 Coze 求职助手工作流
+    演示模式由 Coze 工作流联网检索生成，招聘信息以来源链接为准；自带模型模式由你配置的模型直接生成，无联网检索。仅供参考。<br>
+    求职助手 · 开源网页框架，支持接入个人模型 API
   </footer>
 </div>
 
@@ -374,14 +418,24 @@
   'use strict';
 
   var LS_BASE='coze_proxy_base';
+  var LS_MODE='job_access_mode';
+  var LS_LLM_BASE='job_llm_base';
+  var LS_LLM_KEY='job_llm_key';
+  var LS_LLM_MODEL='job_llm_model';
   var DEFAULT_BASE='https://coze-job-assistant-proxy.unim1012.workers.dev';
+  var DEFAULT_LLM_BASE='https://api.openai.com/v1';
+  var DEFAULT_LLM_MODEL='gpt-4o-mini';
   var POLL_INTERVAL=5000, MAX_WAIT=15*60*1000;
 
   function safeGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
   function safeSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
 
   var cfg={
-    base: safeGet(LS_BASE) || DEFAULT_BASE
+    base: safeGet(LS_BASE) || DEFAULT_BASE,
+    mode: safeGet(LS_MODE) || 'coze',
+    llmBase: safeGet(LS_LLM_BASE) || DEFAULT_LLM_BASE,
+    llmKey: safeGet(LS_LLM_KEY) || '',
+    llmModel: safeGet(LS_LLM_MODEL) || DEFAULT_LLM_MODEL
   };
   var reportRaw='';
   var running=false;
@@ -393,16 +447,38 @@
   /* ===== 初始化 ===== */
   function init(){
     $('#cfgBase').value=cfg.base;
+    $('#llmBase').value=cfg.llmBase;
+    $('#llmKey').value=cfg.llmKey;
+    $('#llmModel').value=cfg.llmModel;
+    var m=$('#modeToggle input[value="'+cfg.mode+'"]');
+    if(m) m.checked=true;
+    renderModePanels();
     renderConfigNotice();
     $('#saveCfg').addEventListener('click', saveConfig);
     $('#jobForm').addEventListener('submit', onSubmit);
     $('#copyBtn').addEventListener('click', copyReport);
     $('#cfgBase').addEventListener('change', function(){ cfg.base=this.value.trim()||DEFAULT_BASE; });
+    $('#llmBase').addEventListener('change', function(){ cfg.llmBase=this.value.trim()||DEFAULT_LLM_BASE; });
+    $('#llmKey').addEventListener('change', function(){ cfg.llmKey=this.value.trim(); });
+    $('#llmModel').addEventListener('change', function(){ cfg.llmModel=this.value.trim()||DEFAULT_LLM_MODEL; });
+    $$('#modeToggle input').forEach(function(r){
+      r.addEventListener('change', function(){ cfg.mode=currentMode(); renderModePanels(); });
+    });
     $('#fillDemo').addEventListener('click', fillDemo);
     $$('#intentToggle input').forEach(function(r){
       r.addEventListener('change', onIntentChange);
     });
     onIntentChange();
+  }
+
+  function currentMode(){
+    var sel=$('#modeToggle input:checked');
+    return sel ? sel.value : 'coze';
+  }
+  function renderModePanels(){
+    var own = currentMode()==='own';
+    $('#cfgCozePanel').classList.toggle('hidden', own);
+    $('#cfgOwnPanel').classList.toggle('hidden', !own);
   }
 
   /* ===== 使用意图切换 ===== */
@@ -438,11 +514,22 @@
   /* ===== 配置 ===== */
   function saveConfig(){
     cfg.base=$('#cfgBase').value.trim()||DEFAULT_BASE;
+    cfg.mode=currentMode();
+    cfg.llmBase=$('#llmBase').value.trim()||DEFAULT_LLM_BASE;
+    cfg.llmKey=$('#llmKey').value.trim();
+    cfg.llmModel=$('#llmModel').value.trim()||DEFAULT_LLM_MODEL;
     safeSet(LS_BASE,cfg.base);
+    safeSet(LS_MODE,cfg.mode);
+    safeSet(LS_LLM_KEY,cfg.llmKey);
+    safeSet(LS_LLM_BASE,cfg.llmBase);
+    safeSet(LS_LLM_MODEL,cfg.llmModel);
     var st=$('#cfgStatus');
     st.className='config-status ok';
-    st.textContent='代理地址已保存。';
+    st.textContent=cfg.mode==='own'
+      ? '已保存：将使用你自己的模型 API（'+cfg.llmModel+'）。'
+      : '已保存：将使用 Coze 工作流（演示模式）。';
     renderConfigNotice();
+    renderModePanels();
   }
 
   /* ===== 表单校验 ===== */
@@ -480,7 +567,8 @@
         ok=false;
       }
     });
-    $('#formNote').textContent=partialMsg||(clear?'运行约需 1–3 分钟，请保持页面打开':'不确定意向时，AI 会先分析经历给出方向建议，运行约需 2–4 分钟');
+    var ownHint = currentMode()==='own' ? '调用你的模型生成，约需 10–60 秒' : '运行约需 1–3 分钟，请保持页面打开';
+    $('#formNote').textContent=partialMsg || (clear ? ownHint : (currentMode()==='own' ? '不确定意向时，AI 会先分析经历给出方向建议' : '不确定意向时，AI 会先分析经历给出方向建议，运行约需 2–4 分钟'));
     return ok;
   }
 
@@ -574,29 +662,112 @@
     e.preventDefault();
     if(running) return;
     if(!validate()) return;
-    if(!cfg.base){
+    var params=collectParams();
+    var own = currentMode()==='own';
+    if(own && !cfg.llmKey){
       $('.settings').open=true;
-      showError({ title:'尚未配置接口', msg:'请先在「接口设置」中填写代理地址并保存。',
-        sug:'展开上方「接口设置」，确认代理地址正确后保存。' });
+      showError({ title:'尚未配置模型 API', msg:'请在「接入设置」中切换到「自带模型 API」并填写你的 Key。',
+        sug:'Key 只保存在你的浏览器本地，费用由你的模型服务商按量计。' });
       return;
     }
-    var params=collectParams();
+    if(!own && !cfg.base){
+      $('.settings').open=true;
+      showError({ title:'尚未配置接口', msg:'请先在「接入设置」中填写代理地址并保存。',
+        sug:'展开上方「接入设置」，确认代理地址正确后保存。' });
+      return;
+    }
     running=true;
     setLoading(true);
     showStatus(true);
+    updateStepLabels();
     setStep(0);
     renderElapsed(0);
-    startRun(params).then(function(taskId){
-      setStep(1);
-      return pollRun(taskId);
-    }).then(function(result){
-      var report=extractOutput(result.result);
+    var task;
+    if(own){
+      var t0=Date.now();
+      var timer=setInterval(function(){ renderElapsed(Date.now()-t0); },1000);
+      task=callLLM(params).then(function(r){
+        clearInterval(timer);
+        setStep(3);
+        return r;
+      }).catch(function(err){ clearInterval(timer); throw err; });
+    } else {
+      task=startRun(params).then(function(taskId){
+        setStep(1);
+        return pollRun(taskId);
+      });
+    }
+    task.then(function(report){
       showReport(report);
     }).catch(function(err){
       showError(err);
     }).then(function(){
       running=false;
       setLoading(false);
+    });
+  }
+
+  /* ===== 自带模型 API 调用（OpenAI 兼容） ===== */
+  function updateStepLabels(){
+    var own=currentMode()==='own';
+    var labels=own
+      ? ['启动模型调用','解析求职意向与经历','岗位与经历匹配分析','生成分析报告']
+      : ['启动工作流','联网检索真实招聘信息','逐岗位匹配分析','生成分析报告'];
+    $$('#steps .step').forEach(function(s,i){
+      var t=s.querySelector('span:last-child');
+      if(t && labels[i]) t.textContent=labels[i];
+    });
+  }
+  function buildLLMPrompt(params){
+    var intent=params['has_clear_intent']==='明确';
+    var intentLines=[];
+    if(intent){
+      for(var i=1;i<=3;i++){
+        var c=params['intent_'+i+'_company_type'], p=params['intent_'+i+'_position'];
+        if(c||p) intentLines.push('顺位'+i+'：企业类型='+(c||'未填')+'，意向职位='+(p||'未填'));
+      }
+    }
+    var user='【使用意图】'+(intent?'有明确求职意向':'还不确定，需要你分析经历后给出求职方向建议')+'\n\n';
+    if(intentLines.length) user+='【求职意向】\n'+intentLines.join('\n')+'\n\n';
+    user+='【个人经历】\n'+(params['user_experience']||'（未填写）')+'\n\n';
+    user+='请基于以上信息生成求职分析报告（使用 Markdown 格式）。';
+    return user;
+  }
+  function callLLM(params){
+    var url=(cfg.llmBase||DEFAULT_LLM_BASE).replace(/\/+$/,'');
+    if(!/\/chat\/completions$/.test(url)) url+='/chat/completions';
+    var sys='你是资深求职顾问与职业规划师。请根据用户提供的求职意向与个人经历，输出专业、具体、可执行的求职分析报告（Markdown 格式）。\n'+
+      '要求：\n'+
+      '1. 若用户意向明确：按意向顺位逐一给出「岗位画像与市场格局（基于行业通用知识，不虚构实时在招岗位或链接）→ 经历匹配分析（优势/差距）→ 针对性提升建议」。\n'+
+      '2. 若用户意向不确定：先分析经历，推荐 2-3 个最匹配的求职方向并说明理由，再给出每个方向的匹配度与准备建议。\n'+
+      '3. 始终包含：求职方向结论、匹配分析、简历优化要点、面试准备建议、下一步行动计划。\n'+
+      '4. 语言精炼、结构清晰，使用标题与列表，不编造事实。';
+    return fetch(url,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+(cfg.llmKey||'')},
+      body:JSON.stringify({
+        model:cfg.llmModel||DEFAULT_LLM_MODEL,
+        messages:[{role:'system',content:sys},{role:'user',content:buildLLMPrompt(params)}],
+        temperature:0.6
+      })
+    }).then(function(res){
+      return res.json().catch(function(){ return null; }).then(function(data){
+        if(!res.ok){
+          var code=data && (data.error && data.error.code || data.error && data.error.type) || String(res.status);
+          var msg=data && data.error && data.error.message || ('模型接口异常（HTTP '+res.status+'）');
+          var e=new Error(msg); e.code='llm_'+code; e.kind='api';
+          throw e;
+        }
+        var content=data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+        if(!content){
+          var e2=new Error('模型未返回有效内容'); e2.code='llm_empty'; e2.kind='api'; throw e2;
+        }
+        return content;
+      });
+    }).catch(function(err){
+      if(err && (err.kind==='api' || err.code)) throw err;
+      var e=new Error('无法连接模型接口，请检查 API 地址与网络（部分服务商需在控制台开启跨域，或自建转发）。');
+      e.code='llm_cors'; e.kind='network'; throw e;
     });
   }
 
@@ -639,7 +810,13 @@
     '604001':'你的 Coze 账号 LLM 资源配额不足，请等待配额恢复或在 Coze 控制台补充资源后重试。',
     'run_failed':'工作流内部运行失败，可稍后重试；若持续失败，请到 Coze 的「运行记录」中查看具体原因。',
     'wait_timeout':'等待结果超过 15 分钟，可稍后重试，或到 Coze「运行记录」中查看。',
-    'network':'无法连接服务，请检查网络；若页面以 file:// 方式本地打开，建议部署到线上后再使用。'
+    'network':'无法连接服务，请检查网络；若页面以 file:// 方式本地打开，建议部署到线上后再使用。',
+    'llm_401':'API Key 无效或已过期，请在「接入设置」中检查填写的 Key 是否正确。',
+    'llm_403':'API Key 无权限访问该模型，请检查模型服务商的权限配置或余额。',
+    'llm_404':'模型名称不存在或接口地址有误，请检查「模型名称」与「API 地址」配置。',
+    'llm_429':'模型服务商限流或额度不足，请稍后重试或检查账号余额。',
+    'llm_cors':'浏览器直连被拦截：该模型服务商未开放跨域访问。可改用支持浏览器直连的 API 服务，或自建一个转发接口后把地址填入「API 地址」。',
+    'llm_empty':'模型未返回有效内容，可更换模型名称后重试。'
   };
   function showError(err){
     $('#statusCard').classList.add('hidden');
