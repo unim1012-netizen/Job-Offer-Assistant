@@ -185,15 +185,13 @@
     </svg>
     <div class="brand">
       <h1>求职助手</h1>
-      <p>AI 岗位匹配分析 · 真实招聘信息检索</p>
+      <p>AI 岗位匹配分析 · 接入你的模型生成求职报告</p>
     </div>
   </header>
 
   <div class="intro">
-    先告诉我你有没有明确的求职方向：<strong>有</strong>就直接填意向（最多三个顺位），<strong>不确定</strong>就把经历交给我，AI 会结合互联网信息给出方向建议再帮你设定意向。随后按意向<strong>并行检索真实招聘信息</strong>、逐岗匹配分析，最终生成完整的求职分析报告。
+    先告诉我你有没有明确的求职方向：<strong>有</strong>就直接填意向（最多三个顺位），<strong>不确定</strong>就把经历交给我，AI 会结合互联网信息给出方向建议再帮你设定意向。随后结合你的意向与经历，生成完整的求职分析报告。
   </div>
-
-  <div id="configNotice" class="notice hidden"></div>
 
   <form id="jobForm" novalidate>
     <div class="card">
@@ -318,11 +316,11 @@
     <div class="settings-body">
       <div class="settings-label">选择使用哪种模型方式</div>
       <div class="intent-toggle mode-toggle" id="modeToggle" style="margin-bottom:14px;">
-        <label class="toggle-opt" data-val="coze">
-          <input type="radio" name="accessMode" value="coze" checked>
+        <label class="toggle-opt" data-val="sample">
+          <input type="radio" name="accessMode" value="sample" checked>
           <span class="toggle-body">
-            <b>Coze 工作流（演示）</b>
-            <small>走站长代理与额度，免配置，人多时可能排队或配额不足</small>
+            <b>示例预览</b>
+            <small>无需任何配置，立即查看一份示例报告，不调用接口、不消耗额度</small>
           </span>
         </label>
         <label class="toggle-opt" data-val="own">
@@ -332,20 +330,6 @@
             <small>填自己的 OpenAI 兼容接口 Key，费用由你的模型服务商按量计</small>
           </span>
         </label>
-      </div>
-
-      <div id="cfgCozePanel">
-        <div class="settings-grid">
-          <div class="field">
-            <label for="cfgBase">API 代理地址</label>
-            <input type="text" id="cfgBase" placeholder="https://coze-job-assistant-proxy.unim1012.workers.dev" autocomplete="off">
-          </div>
-        </div>
-        <div class="settings-note">
-          <b>已默认接入 Cloudflare 代理，无需填写令牌。</b>
-          代理地址指向 Cloudflare Worker（<code>coze-job-assistant-proxy.unim1012.workers.dev</code>），
-          访问令牌保存在代理服务端，浏览器与代码仓库中均不包含令牌。
-        </div>
       </div>
 
       <div id="cfgOwnPanel" class="hidden">
@@ -364,7 +348,7 @@
           </div>
         </div>
         <div class="settings-note">
-          <b>Key 仅保存在你的浏览器本地（localStorage），调用时直接发往你填写的 API 地址，不会上传到本站服务器。</b>
+          <b>Key 仅保存在你的浏览器本地（localStorage），调用时直接发往你填写的 API 地址，不会上传到任何服务器。</b>
           支持 OpenAI、DeepSeek、Moonshot、智谱、豆包火山方舟等 OpenAI 兼容接口（部分服务商需自建转发以支持浏览器跨域）。
           纯大模型无法联网，报告中的岗位画像与匹配分析基于行业通用知识生成，不含实时在招岗位。
         </div>
@@ -408,7 +392,7 @@
   </div>
 
   <footer>
-    演示模式由 Coze 工作流联网检索生成，招聘信息以来源链接为准；自带模型模式由你配置的模型直接生成，无联网检索。仅供参考。<br>
+    示例预览不调用任何接口、不消耗任何额度；生成真实报告需在「接入设置」中配置你自己的模型 API（费用由模型服务商按量计）。仅供参考。<br>
     求职助手 · 开源网页框架，支持接入个人模型 API
   </footer>
 </div>
@@ -417,22 +401,18 @@
 (function(){
   'use strict';
 
-  var LS_BASE='coze_proxy_base';
   var LS_MODE='job_access_mode';
   var LS_LLM_BASE='job_llm_base';
   var LS_LLM_KEY='job_llm_key';
   var LS_LLM_MODEL='job_llm_model';
-  var DEFAULT_BASE='https://coze-job-assistant-proxy.unim1012.workers.dev';
   var DEFAULT_LLM_BASE='https://api.openai.com/v1';
   var DEFAULT_LLM_MODEL='gpt-4o-mini';
-  var POLL_INTERVAL=5000, MAX_WAIT=15*60*1000;
 
   function safeGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
   function safeSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
 
   var cfg={
-    base: safeGet(LS_BASE) || DEFAULT_BASE,
-    mode: safeGet(LS_MODE) || 'coze',
+    mode: safeGet(LS_MODE) || 'sample',
     llmBase: safeGet(LS_LLM_BASE) || DEFAULT_LLM_BASE,
     llmKey: safeGet(LS_LLM_KEY) || '',
     llmModel: safeGet(LS_LLM_MODEL) || DEFAULT_LLM_MODEL
@@ -446,39 +426,43 @@
 
   /* ===== 初始化 ===== */
   function init(){
-    $('#cfgBase').value=cfg.base;
     $('#llmBase').value=cfg.llmBase;
     $('#llmKey').value=cfg.llmKey;
     $('#llmModel').value=cfg.llmModel;
     var m=$('#modeToggle input[value="'+cfg.mode+'"]');
     if(m) m.checked=true;
     renderModePanels();
-    renderConfigNotice();
     $('#saveCfg').addEventListener('click', saveConfig);
     $('#jobForm').addEventListener('submit', onSubmit);
     $('#copyBtn').addEventListener('click', copyReport);
-    $('#cfgBase').addEventListener('change', function(){ cfg.base=this.value.trim()||DEFAULT_BASE; });
     $('#llmBase').addEventListener('change', function(){ cfg.llmBase=this.value.trim()||DEFAULT_LLM_BASE; });
     $('#llmKey').addEventListener('change', function(){ cfg.llmKey=this.value.trim(); });
     $('#llmModel').addEventListener('change', function(){ cfg.llmModel=this.value.trim()||DEFAULT_LLM_MODEL; });
     $$('#modeToggle input').forEach(function(r){
-      r.addEventListener('change', function(){ cfg.mode=currentMode(); renderModePanels(); });
+      r.addEventListener('change', function(){ cfg.mode=currentMode(); renderModePanels(); updateSubmitUI(); });
     });
     $('#fillDemo').addEventListener('click', fillDemo);
     $$('#intentToggle input').forEach(function(r){
       r.addEventListener('change', onIntentChange);
     });
     onIntentChange();
+    updateSubmitUI();
   }
 
   function currentMode(){
     var sel=$('#modeToggle input:checked');
-    return sel ? sel.value : 'coze';
+    return sel ? sel.value : 'sample';
   }
   function renderModePanels(){
     var own = currentMode()==='own';
-    $('#cfgCozePanel').classList.toggle('hidden', own);
     $('#cfgOwnPanel').classList.toggle('hidden', !own);
+  }
+  function updateSubmitUI(){
+    var sample = currentMode()==='sample';
+    $('#submitBtn .btn-text').textContent = sample ? '查看示例报告' : '生成求职分析报告';
+    $('#formNote').textContent = sample
+      ? '示例模式：直接展示一份内置报告，不调用任何接口'
+      : (currentIntent()==='明确' ? '调用你的模型生成，约需 10–60 秒' : '不确定意向时，AI 会先分析经历给出方向建议');
   }
 
   /* ===== 使用意图切换 ===== */
@@ -507,18 +491,12 @@
     $('#fillDemo').scrollIntoView({behavior:'smooth',block:'nearest'});
   }
 
-  function renderConfigNotice(){
-    $('#configNotice').classList.add('hidden');
-  }
-
   /* ===== 配置 ===== */
   function saveConfig(){
-    cfg.base=$('#cfgBase').value.trim()||DEFAULT_BASE;
     cfg.mode=currentMode();
     cfg.llmBase=$('#llmBase').value.trim()||DEFAULT_LLM_BASE;
     cfg.llmKey=$('#llmKey').value.trim();
     cfg.llmModel=$('#llmModel').value.trim()||DEFAULT_LLM_MODEL;
-    safeSet(LS_BASE,cfg.base);
     safeSet(LS_MODE,cfg.mode);
     safeSet(LS_LLM_KEY,cfg.llmKey);
     safeSet(LS_LLM_BASE,cfg.llmBase);
@@ -527,9 +505,9 @@
     st.className='config-status ok';
     st.textContent=cfg.mode==='own'
       ? '已保存：将使用你自己的模型 API（'+cfg.llmModel+'）。'
-      : '已保存：将使用 Coze 工作流（演示模式）。';
-    renderConfigNotice();
+      : '已保存：示例预览模式，不调用任何接口。';
     renderModePanels();
+    updateSubmitUI();
   }
 
   /* ===== 表单校验 ===== */
@@ -567,8 +545,11 @@
         ok=false;
       }
     });
-    var ownHint = currentMode()==='own' ? '调用你的模型生成，约需 10–60 秒' : '运行约需 1–3 分钟，请保持页面打开';
-    $('#formNote').textContent=partialMsg || (clear ? ownHint : (currentMode()==='own' ? '不确定意向时，AI 会先分析经历给出方向建议' : '不确定意向时，AI 会先分析经历给出方向建议，运行约需 2–4 分钟'));
+    if(partialMsg){
+      $('#formNote').textContent=partialMsg;
+    } else {
+      updateSubmitUI();
+    }
     return ok;
   }
 
@@ -588,92 +569,17 @@
     return p;
   }
 
-  /* ===== 工作流调用（经 Cloudflare 代理，异步执行 + 轮询） ===== */
-  function extractErrText(data){
-    if(!data) return '';
-    if(typeof data==='string') return data;
-    if(data.detail && data.detail.error_message) return data.detail.error_message;
-    if(data.error && data.error.message) return data.error.message;
-    if(data.message) return data.message;
-    if(data.msg) return data.msg;
-    return '';
-  }
-  function extractErrCode(data){
-    if(!data) return '';
-    if(typeof data==='object'){
-      if(data.detail && data.detail.error_code) return String(data.detail.error_code);
-      if(data.error && data.error.code) return String(data.error.code);
-      if(data.code!==undefined) return String(data.code);
-    }
-    return '';
-  }
-  function api(path,opts){
-    return fetch(cfg.base+path,opts).then(function(res){
-      return res.text().catch(function(){ return ''; }).then(function(txt){
-        var data=null;
-        if(txt){ try{ data=JSON.parse(txt); }catch(e){ data=txt; } }
-        if(!res.ok){
-          var e=new Error(extractErrText(data)||('接口异常（HTTP '+res.status+'）'));
-          e.code=extractErrCode(data)||String(res.status);
-          e.kind='api';
-          throw e;
-        }
-        return data;
-      });
-    }).catch(function(err){
-      if(err && (err.kind==='api' || err.code)) throw err;
-      var e=new Error('无法连接服务：'+(err&&err.message||'网络错误')); e.kind='network'; throw e;
-    });
-  }
-
-  function startRun(params){
-    return api('/async_run',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(params)
-    }).then(function(d){ return d.task_id; });
-  }
-
-  function pollRun(taskId){
-    var t0=Date.now();
-    function tick(){
-      var elapsed=Date.now()-t0;
-      renderElapsed(elapsed);
-      renderStepsByElapsed(elapsed);
-      return elapsed;
-    }
-    function loop(){
-      return api('/task/'+encodeURIComponent(taskId)).then(function(d){
-        var st=d && d.status;
-        if(st==='succeeded') return d;
-        if(st==='failed'){
-          var e=new Error((d&&d.error&&d.error.error_message)||'工作流运行失败');
-          e.code='run_failed'; throw e;
-        }
-        if(tick()>=MAX_WAIT){ var e2=new Error('等待结果超过 15 分钟，请稍后重试'); e2.code='wait_timeout'; throw e2; }
-        return sleep(POLL_INTERVAL).then(loop);
-      });
-    }
-    return loop();
-  }
-
   /* ===== 提交 ===== */
   function onSubmit(e){
     e.preventDefault();
     if(running) return;
     if(!validate()) return;
     var params=collectParams();
-    var own = currentMode()==='own';
-    if(own && !cfg.llmKey){
+    var sample = currentMode()==='sample';
+    if(!sample && !cfg.llmKey){
       $('.settings').open=true;
-      showError({ title:'尚未配置模型 API', msg:'请在「接入设置」中切换到「自带模型 API」并填写你的 Key。',
-        sug:'Key 只保存在你的浏览器本地，费用由你的模型服务商按量计。' });
-      return;
-    }
-    if(!own && !cfg.base){
-      $('.settings').open=true;
-      showError({ title:'尚未配置接口', msg:'请先在「接入设置」中填写代理地址并保存。',
-        sug:'展开上方「接入设置」，确认代理地址正确后保存。' });
+      showError({ title:'需要先配置你的模型 API', msg:'请在「接入设置」中切换到「自带模型 API」，填写 API 地址、Key 和模型名。',
+        sug:'Key 只保存在你的浏览器本地，费用由你的模型服务商按量计。未配置前可先用「示例预览」查看效果。' });
       return;
     }
     running=true;
@@ -683,7 +589,15 @@
     setStep(0);
     renderElapsed(0);
     var task;
-    if(own){
+    if(sample){
+      var t0s=Date.now();
+      var ts=setInterval(function(){ renderElapsed(Date.now()-t0s); },1000);
+      task=sleep(1400).then(function(){
+        clearInterval(ts);
+        setStep(3);
+        return SAMPLE_REPORT;
+      });
+    } else {
       var t0=Date.now();
       var timer=setInterval(function(){ renderElapsed(Date.now()-t0); },1000);
       task=callLLM(params).then(function(r){
@@ -691,11 +605,6 @@
         setStep(3);
         return r;
       }).catch(function(err){ clearInterval(timer); throw err; });
-    } else {
-      task=startRun(params).then(function(taskId){
-        setStep(1);
-        return pollRun(taskId);
-      });
     }
     task.then(function(report){
       showReport(report);
@@ -707,12 +616,65 @@
     });
   }
 
+  /* ===== 示例报告 ===== */
+  var SAMPLE_REPORT=[
+    '> 这是一份**示例报告**，用于演示报告效果：不调用任何接口、不消耗任何额度。配置你自己的模型 API 后，即可为你的意向与经历生成专属报告。',
+    '',
+    '## 求职方向结论',
+    '',
+    '结合你的背景（计算机硕士 · 3 年后端开发经验 · 推荐系统与数据管道项目经历）与第一意向「互联网大厂 · 产品经理」，综合判断：**技术与产品的复合背景在「技术型产品经理」方向匹配度最高**，建议将第一顺位聚焦为「互联网大厂 · 技术产品经理（B 端/平台方向）」，同时保留数据分析方向的第二顺位作为备选。',
+    '',
+    '## 岗位画像与市场格局',
+    '',
+    '### 顺位一：互联网大厂 · 技术产品经理',
+    '- **岗位画像**：负责平台型产品（如云服务、开发者工具、数据中台）的需求定义、方案设计与跨团队推进，需要技术理解力支撑与研发/算法团队的高效沟通。',
+    '- **市场格局**：大厂产品岗竞争激烈，候选人池以「产品专业出身 + 实习/项目」为主；具备真实工程背景的候选人属于差异化优势，尤其在 AI、云、数据类产品线。',
+    '- **核心要求**：产品方法论（需求分析、PRD、数据指标）、项目管理、技术沟通能力。',
+    '',
+    '### 顺位二：外企 · 数据分析师',
+    '- **岗位画像**：面向业务决策的数据分析，产出看板、专题分析与增长洞察，强调 SQL、统计与业务理解。',
+    '- **市场格局**：外企对数据分析岗位的英文能力与业务沟通要求较高，工程背景是加分项。',
+    '',
+    '## 经历匹配分析',
+    '',
+    '| 维度 | 你的现状 | 与目标岗位的差距 | 影响度 |',
+    '| --- | --- | --- | --- |',
+    '| 技术能力 | 3 年后端 + 架构设计经验 | 完全满足甚至超出 | 高 |',
+    '| 产品经验 | 项目经历偏工程交付 | 缺少需求分析/PRD 产出记录 | 中 |',
+    '| 数据能力 | 熟悉数据管道 | SQL 分析深度需补齐 | 中 |',
+    '| 面试表达 | 工程语言为主 | 需切换为业务/产品语言 | 中 |',
+    '',
+    '## 简历优化要点',
+    '',
+    '- 把「负责核心模块架构设计」改写为「主导 X 模块从 0 到 1，服务 Y 万用户，将核心链路耗时降低 Z%」——用**业务结果**替代技术过程。',
+    '- 增加「与产品/运营协作」的案例，突出跨角色推进能力。',
+    '- 为每个项目补充一段「业务价值」描述：解决了什么问题、影响了什么指标。',
+    '',
+    '## 面试准备建议',
+    '',
+    '1. 准备 2 个完整的产品案例：背景 - 问题 - 方案 - 结果 - 复盘。',
+    '2. 复习产品基本功：需求优先级（RICE）、指标拆解（AARRR）、竞品分析方法。',
+    '3. 针对性练习：把技术方案讲给非技术听众的能力。',
+    '4. 用 STAR 法则组织项目故事，控制每个故事 2 分钟内讲完。',
+    '',
+    '## 下一步行动计划',
+    '',
+    '| 时间 | 行动 | 产出 |',
+    '| --- | --- | --- |',
+    '| 第 1 周 | 完成 2 份技术产品方向 PRD 练习 | 作品集素材 |',
+    '| 第 2 周 | 简历按「结果导向」改写并找人互评 | 简历 v2 |',
+    '| 第 2-4 周 | 每周投递 15-20 个技术产品经理岗 | 面试机会 |',
+    '| 持续 | 学习 SQL + 产品方法论课程 | 补齐短板 |',
+    '',
+    '> 示例结束。在「接入设置」中选择「自带模型 API」并填入你的 Key 后，即可生成属于你的真实报告。'
+  ].join('\n');
+
   /* ===== 自带模型 API 调用（OpenAI 兼容） ===== */
   function updateStepLabels(){
-    var own=currentMode()==='own';
-    var labels=own
-      ? ['启动模型调用','解析求职意向与经历','岗位与经历匹配分析','生成分析报告']
-      : ['启动工作流','联网检索真实招聘信息','逐岗位匹配分析','生成分析报告'];
+    var sample = currentMode()==='sample';
+    var labels=sample
+      ? ['加载示例','读取示例报告','渲染报告','展示完成']
+      : ['启动模型调用','解析求职意向与经历','岗位与经历匹配分析','生成分析报告'];
     $$('#steps .step').forEach(function(s,i){
       var t=s.querySelector('span:last-child');
       if(t && labels[i]) t.textContent=labels[i];
@@ -779,10 +741,6 @@
       s.classList.toggle('active', idx===i);
     });
   }
-  function renderStepsByElapsed(sec){
-    var i = sec<15 ? 1 : (sec<50 ? 2 : 3);
-    setStep(i);
-  }
   function renderElapsed(ms){
     var sec=Math.floor(ms/1000);
     $('#elapsed').textContent = sec<60
@@ -803,13 +761,6 @@
 
   /* ===== 错误提示 ===== */
   var SUGGEST={
-    '401':'代理中的访问令牌无效或已过期，请检查 Cloudflare Worker 中的 Token 配置。',
-    '400':'请求参数有误，请检查意向与经历的填写是否完整、企业类型是否从下拉列表中选择。',
-    '404':'代理路径不存在，请检查「接口设置」中的代理地址是否正确。',
-    '201002':'提交的参数未通过工作流校验。注意：企业类型需从下拉列表选择；「不确定意向」时不要填写顺位意向，只提交经历即可；意向顺位若留空请整行不填。',
-    '604001':'你的 Coze 账号 LLM 资源配额不足，请等待配额恢复或在 Coze 控制台补充资源后重试。',
-    'run_failed':'工作流内部运行失败，可稍后重试；若持续失败，请到 Coze 的「运行记录」中查看具体原因。',
-    'wait_timeout':'等待结果超过 15 分钟，可稍后重试，或到 Coze「运行记录」中查看。',
     'network':'无法连接服务，请检查网络；若页面以 file:// 方式本地打开，建议部署到线上后再使用。',
     'llm_401':'API Key 无效或已过期，请在「接入设置」中检查填写的 Key 是否正确。',
     'llm_403':'API Key 无权限访问该模型，请检查模型服务商的权限配置或余额。',
