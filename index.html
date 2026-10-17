@@ -193,6 +193,57 @@
     先告诉我你有没有明确的求职方向：<strong>有</strong>就直接填意向（最多三个顺位），<strong>不确定</strong>就把经历交给我，AI 会结合互联网信息给出方向建议再帮你设定意向。随后结合你的意向与经历，生成完整的求职分析报告。
   </div>
 
+  <details class="settings" style="margin-bottom:18px;">
+    <summary>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      接入设置（模型方式）
+    </summary>
+    <div class="settings-body">
+      <div class="settings-label">选择使用哪种模型方式</div>
+      <div class="intent-toggle mode-toggle" id="modeToggle" style="margin-bottom:14px;">
+        <label class="toggle-opt" data-val="sample">
+          <input type="radio" name="accessMode" value="sample" checked>
+          <span class="toggle-body">
+            <b>示例预览</b>
+            <small>无需任何配置，立即查看一份示例报告，不调用接口、不消耗额度</small>
+          </span>
+        </label>
+        <label class="toggle-opt" data-val="own">
+          <input type="radio" name="accessMode" value="own">
+          <span class="toggle-body">
+            <b>自带模型 API</b>
+            <small>填自己的 OpenAI 兼容接口 Key，费用由你的模型服务商按量计</small>
+          </span>
+        </label>
+      </div>
+
+      <div id="cfgOwnPanel" class="hidden">
+        <div class="settings-grid">
+          <div class="field">
+            <label for="llmBase">API 地址（OpenAI 兼容）</label>
+            <input type="text" id="llmBase" placeholder="https://api.openai.com/v1" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="llmKey">API Key</label>
+            <input type="password" id="llmKey" placeholder="sk-..." autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="llmModel">模型名称</label>
+            <input type="text" id="llmModel" placeholder="gpt-4o-mini" autocomplete="off">
+          </div>
+        </div>
+        <div class="settings-note">
+          <b>Key 仅保存在你的浏览器本地（localStorage），调用时直接发往你填写的 API 地址，不会上传到任何服务器。</b>
+          支持 OpenAI、DeepSeek、Moonshot、智谱、豆包火山方舟等 OpenAI 兼容接口（部分服务商需自建转发以支持浏览器跨域）。
+          纯大模型无法联网，报告中的岗位画像与匹配分析基于行业通用知识生成，不含实时在招岗位。
+        </div>
+      </div>
+
+      <button type="button" class="btn" id="saveCfg" style="padding:9px 18px; font-size:14px;">保存配置</button>
+      <div class="config-status" id="cfgStatus"></div>
+    </div>
+  </details>
+
   <form id="jobForm" novalidate>
     <div class="card">
       <h2><span class="step">1</span>使用意图</h2>
@@ -308,56 +359,6 @@
     </div>
   </form>
 
-  <details class="settings" style="margin-top:18px;">
-    <summary>
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      接入设置（模型方式）
-    </summary>
-    <div class="settings-body">
-      <div class="settings-label">选择使用哪种模型方式</div>
-      <div class="intent-toggle mode-toggle" id="modeToggle" style="margin-bottom:14px;">
-        <label class="toggle-opt" data-val="sample">
-          <input type="radio" name="accessMode" value="sample" checked>
-          <span class="toggle-body">
-            <b>示例预览</b>
-            <small>无需任何配置，立即查看一份示例报告，不调用接口、不消耗额度</small>
-          </span>
-        </label>
-        <label class="toggle-opt" data-val="own">
-          <input type="radio" name="accessMode" value="own">
-          <span class="toggle-body">
-            <b>自带模型 API</b>
-            <small>填自己的 OpenAI 兼容接口 Key，费用由你的模型服务商按量计</small>
-          </span>
-        </label>
-      </div>
-
-      <div id="cfgOwnPanel" class="hidden">
-        <div class="settings-grid">
-          <div class="field">
-            <label for="llmBase">API 地址（OpenAI 兼容）</label>
-            <input type="text" id="llmBase" placeholder="https://api.openai.com/v1" autocomplete="off">
-          </div>
-          <div class="field">
-            <label for="llmKey">API Key</label>
-            <input type="password" id="llmKey" placeholder="sk-..." autocomplete="off">
-          </div>
-          <div class="field">
-            <label for="llmModel">模型名称</label>
-            <input type="text" id="llmModel" placeholder="gpt-4o-mini" autocomplete="off">
-          </div>
-        </div>
-        <div class="settings-note">
-          <b>Key 仅保存在你的浏览器本地（localStorage），调用时直接发往你填写的 API 地址，不会上传到任何服务器。</b>
-          支持 OpenAI、DeepSeek、Moonshot、智谱、豆包火山方舟等 OpenAI 兼容接口（部分服务商需自建转发以支持浏览器跨域）。
-          纯大模型无法联网，报告中的岗位画像与匹配分析基于行业通用知识生成，不含实时在招岗位。
-        </div>
-      </div>
-
-      <button type="button" class="btn" id="saveCfg" style="padding:9px 18px; font-size:14px;">保存配置</button>
-      <div class="config-status" id="cfgStatus"></div>
-    </div>
-  </details>
 
   <div class="result" id="resultArea">
     <div class="card status-card" id="statusCard">
